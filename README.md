@@ -20,6 +20,11 @@ cmake -B build
 cmake --build build
 ./build/crypto_app
 ```
+или
+
+```bash
+g++ -std=c++17 -Iinclude -Iciphers -o build/crypto_app     src/main.cpp src/CipherRegistry.cpp src/utils/HexCodec.cpp     ciphers/speck/SpeckCore.cpp ciphers/speck/SpeckCipher.cpp     ciphers/hight/HightCore.cpp ciphers/hight/HightCipher.cpp
+```
 
 ## Как подключить свой шифр
 
