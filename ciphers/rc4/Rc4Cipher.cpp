@@ -34,91 +34,114 @@ void Rc4Cipher::ksa_init(const std::vector<uint8_t>& key, const std::vector<uint
     }
 }
 
-std::vector<uint8_t> Rc4Cipher::run_rc4(const std::vector<uint8_t>& data, const std::vector<uint8_t>& key, const std::vector<uint8_t>& iv) {
-    std::vector<uint8_t> s_box;
-    ksa_init(key, iv, s_box);
+bool Rc4Cipher::process_buffer(std::vector<uint8_t>& buffer, const std::string& key, bool is_encrypt) {
+    if (!isValidKeyLength(key.size())) {
+        return false;
+    }
 
-    std::vector<uint8_t> result;
-    result.reserve(data.size());
+    std::vector<uint8_t> byte_key(key.begin(), key.end());
+    std::vector<uint8_t> iv(IV_SIZE);
+    std::vector<uint8_t> data_to_process;
+
+    if (is_encrypt) {
+        std::random_device rd;
+        for (auto& b : iv) {
+            b = static_cast<uint8_t>(rd() % 256);
+        }
+        data_to_process = buffer;
+    } else {
+        if (buffer.size() < IV_SIZE) {
+            return false;
+        }
+        std::copy(buffer.begin(), buffer.begin() + IV_SIZE, iv.begin());
+        data_to_process.assign(buffer.begin() + IV_SIZE, buffer.end());
+    }
+
+    std::vector<uint8_t> s_box;
+    ksa_init(byte_key, iv, s_box);
+
+    std::vector<uint8_t> crypto_result;
+    crypto_result.reserve(data_to_process.size());
 
     size_t i = 0;
     size_t j = 0;
-
-    for (size_t k = 0; k < data.size(); ++k) {
+    for (size_t k = 0; k < data_to_process.size(); ++k) {
         i = (i + 1) % SBOX_SIZE;
         j = (j + s_box[i]) % SBOX_SIZE;
         std::swap(s_box[i], s_box[j]);
-        
+
         uint8_t keystream_byte = s_box[(s_box[i] + s_box[j]) % SBOX_SIZE];
-        result.push_back(data[k] ^ keystream_byte);
+        crypto_result.push_back(data_to_process[k] ^ keystream_byte);
     }
-    return result;
+
+    buffer.clear();
+    if (is_encrypt) {
+        buffer.reserve(IV_SIZE + crypto_result.size());
+        buffer.insert(buffer.end(), iv.begin(), iv.end());
+    }
+    buffer.insert(buffer.end(), crypto_result.begin(), crypto_result.end());
+
+    return true;
 }
 
 std::string Rc4Cipher::encryptText(const std::string& text, const std::string& key) {
-    std::vector<uint8_t> byte_key(key.begin(), key.end());
-    std::vector<uint8_t> byte_data(text.begin(), text.end());
-
-    std::random_device rd;
-    std::vector<uint8_t> iv(IV_SIZE);
-    for (auto& b : iv) b = static_cast<uint8_t>(rd() % 256);
-
-    std::vector<uint8_t> ciphertext = run_rc4(byte_data, byte_key, iv);
-
-    std::string result;
-    result.reserve(IV_SIZE + ciphertext.size());
-    result.assign(iv.begin(), iv.end());
-    result.append(ciphertext.begin(), ciphertext.end());
-    return result;
+    std::vector<uint8_t> buffer(text.begin(), text.end());
+    if (!process_buffer(buffer, key, true)) {
+        return "";
+    }
+    return std::string(buffer.begin(), buffer.end());
 }
 
 std::string Rc4Cipher::decryptText(const std::string& text, const std::string& key) {
-    if (text.size() < IV_SIZE) return "";
-
-    std::vector<uint8_t> byte_key(key.begin(), key.end());
-    std::vector<uint8_t> iv(text.begin(), text.begin() + IV_SIZE);
-    std::vector<uint8_t> ciphertext(text.begin() + IV_SIZE, text.end());
-
-    std::vector<uint8_t> decrypted = run_rc4(ciphertext, byte_key, iv);
-    return std::string(decrypted.begin(), decrypted.end());
+    std::vector<uint8_t> buffer(text.begin(), text.end());
+    if (!process_buffer(buffer, key, false)) {
+        return "";
+    }
+    return std::string(buffer.begin(), buffer.end());
 }
 
 bool Rc4Cipher::encryptFile(const std::string& inPath, const std::string& outPath, const std::string& key) {
     std::ifstream in_file(inPath, std::ios::binary);
-    if (!in_file) return false;
+    if (!in_file) {
+        return false;
+    }
+
+    std::vector<uint8_t> buffer(
+        (std::istreambuf_iterator<char>(in_file)),
+        std::istreambuf_iterator<char>());
+    in_file.close();
+
+    if (!process_buffer(buffer, key, true)) {
+        return false;
+    }
 
     std::ofstream out_file(outPath, std::ios::binary);
-    if (!out_file) return false;
-
-    std::vector<uint8_t> byte_key(key.begin(), key.end());
-    std::random_device rd;
-    std::vector<uint8_t> iv(IV_SIZE);
-    for (auto& b : iv) b = static_cast<uint8_t>(rd() % 256);
-
-    out_file.write(reinterpret_cast<const char*>(iv.data()), IV_SIZE);
-
-    std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(in_file)), std::istreambuf_iterator<char>());
-    std::vector<uint8_t> ciphertext = run_rc4(buffer, byte_key, iv);
-
-    out_file.write(reinterpret_cast<const char*>(ciphertext.data()), ciphertext.size());
+    if (!out_file) {
+        return false;
+    }
+    out_file.write(reinterpret_cast<const char*>(buffer.data()), buffer.size());
     return true;
 }
 
 bool Rc4Cipher::decryptFile(const std::string& inPath, const std::string& outPath, const std::string& key) {
     std::ifstream in_file(inPath, std::ios::binary);
-    if (!in_file) return false;
+    if (!in_file) {
+        return false;
+    }
+
+    std::vector<uint8_t> buffer(
+        (std::istreambuf_iterator<char>(in_file)),
+        std::istreambuf_iterator<char>());
+    in_file.close();
+
+    if (!process_buffer(buffer, key, false)) {
+        return false;
+    }
 
     std::ofstream out_file(outPath, std::ios::binary);
-    if (!out_file) return false;
-
-    std::vector<uint8_t> iv(IV_SIZE);
-    in_file.read(reinterpret_cast<char*>(iv.data()), IV_SIZE);
-    if (in_file.gcount() < static_cast<std::streamsize>(IV_SIZE)) return false;
-
-    std::vector<uint8_t> byte_key(key.begin(), key.end());
-    std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(in_file)), std::istreambuf_iterator<char>());
-    std::vector<uint8_t> decrypted = run_rc4(buffer, byte_key, iv);
-
-    out_file.write(reinterpret_cast<const char*>(decrypted.data()), decrypted.size());
+    if (!out_file) {
+        return false;
+    }
+    out_file.write(reinterpret_cast<const char*>(buffer.data()), buffer.size());
     return true;
 }
