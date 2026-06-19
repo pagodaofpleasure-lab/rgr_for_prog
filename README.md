@@ -1,5 +1,5 @@
-*This readme is for des/aes only* *Только для des/aes*
+*This readme is for des/aes only* *Файл только для des/aes*
 В ветке находятся две программы одновременно одна для де/шифрования aes другая для des
-обе программы шифруют файл input и выводят output
+обе программы шифруют файл input и выводят output 
 
 
