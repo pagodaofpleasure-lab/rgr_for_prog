@@ -121,7 +121,7 @@ string readKeyFromUser() {
             return keyInput;
         }
 
-        cout << "Ошибка: неверный ключ. Попробуйте снова." << endl;
+        cout << "Ошибка: неверный ключ." << endl;
     }
 }
 
@@ -160,7 +160,7 @@ void processTextOperation() {
         cout << "Введите текст: ";
         getline(cin, text);
         if (text.empty()) {
-            cout << "Ошибка: текст не может быть пустым, попробуйте снова." << endl;
+            cout << "Ошибка: текст не может быть пустым." << endl;
         }
     } while (text.empty());
 
