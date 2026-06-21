@@ -63,8 +63,15 @@ static vector<unsigned char> hillProcess(const vector<unsigned char>& data, cons
 }
 
 static vector<unsigned char> doEncrypt(const vector<unsigned char>& data, const char* key) {
+    if (!key || strlen(key) != 4) {
+        return {};
+    }
     unsigned char m[4];
     memcpy(m, key, 4);
+    if (invMod(det2(m)) < 0) {
+        return {};
+    }
+    
     return hillProcess(data, m, true);
 }
 
@@ -106,7 +113,7 @@ unsigned char* decrypt_data(const unsigned char* data, int dataSize, const char*
 }
 
 const char* generate_key() {
-    g_resultString = "abcd";
+    g_resultString = randomHill2x2Key();
     return g_resultString.c_str();
 }
 
