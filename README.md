@@ -1,79 +1,93 @@
-# rgr_for_prog — (РГЗ)
+# rgr_for_prog — РГЗ (динамические библиотеки)
+
+Консольное приложение с загрузкой шифров из `.so` файлов.
 
 ## Состав команды
 
- Участник | Шифры 
-
-Ващенко А. А. | Speck, HIGHT 
-Ким Э. А. | RC4, шифр Хилла 
-Селякин Г. К. | RC5, XTEA 
-Лухнёв С. А. | AES, DES 
-
-## Сборка
-
-```bash
-cd rgr_for_prog
-cmake -B build
-cmake --build build
-./build/crypto_app
-```
-
-## Как подключить свой шифр
-
-1. Создайте папку `ciphers/<имя>/` (например, `ciphers/rc4/`).
-2. Напишите класс, который наследует `ICipher` из `include/ICipher.h`.
-3. Добавьте ваши `.cpp` файлы в `CMakeLists.txt`.
-4. Добавьте одну строку в `src/CipherRegistry.cpp`:
-
-```cpp
-ciphers.push_back(std::make_unique<rc4::RC4Cipher>());
-```
-
-5. Не меняйте `main.cpp` и `ICipher.h` без согласования.
-
-## Интерфейс ICipher
-
-Каждый шифр реализует 6 методов:
-
-- `getName()` — имя в меню
-- `getKeyRequirementsInfo()` — подсказка о длине пароля
-- `isValidKeyLength()` — проверка длины пароля
-- `encryptText()` / `decryptText()` — работа с текстом
-- `encryptFile()` / `decryptFile()` — работа с файлами
-
-## Требования к паролю
-
-| Шифр | Длина пароля |
-
-Speck 128/128 | ровно 16 символов 
-HIGHT | от 1 до 16 символов (дополняется нулями) 
-RC4 | 1–256 символов  
-Hill | 
-RC5 |  
-XTEA | ровно 16 символов 
-AES | 16 / 24 / 32 символа 
-DES | ровно 8 символов 
+| Участник | Шифры |
+|----------|-------|
+| Ващенко А. А. | Speck, HIGHT |
+| Ким Э. А. | RC4, шифр Хилла |
+| Селякин Г. К. | RC5, XTEA |
+| Лухнёв С. А. | AES, DES |
 
 ## Структура проекта
 
 ```
 rgr_for_prog/
-├── include/
-│   ├── ICipher.h           # общий интерфейс
-│   ├── CipherRegistry.h
-│   └── utils/HexCodec.h    # hex и padding для блочных шифров
-├── src/
-│   ├── main.cpp            # меню программы
-│   └── CipherRegistry.cpp  # регистрация шифров
-└── ciphers/
-    ├── speck/              # готово
-    ├── hight/              # готово
-    ├── rc4/                # Ким
-    ├── hill/               # Ким
-    ├── rc5/                # Селякин
-    ├── xtea/               # Селякин
-    ├── aes/                # Лухнёв
-    └── des/                # Лухнёв
+├── algorithm_interface.h   # общий интерфейс плагинов
+├── utils.h                 # hex, PKCS7, ключи
+├── library_loader.h/cpp    # загрузка .so через dlopen
+├── main.cpp                # меню программы
+├── speck_lib.cpp           # исходник плагина Speck
+├── hight_lib.cpp
+├── aes_lib.cpp
+├── des_lib.cpp
+├── rc4_lib.cpp
+├── hill_lib.cpp
+├── rc5_lib.cpp
+├── xtea_lib.cpp
+├── build.sh                # скрипт сборки
+└── algorithms/             # сюда кладутся .so (создаётся при сборке)
 ```
 
+## Сборка
+
+```bash
+cd rgr_for_prog
+chmod +x build.sh
+./build.sh
+./app
+```
+
+Или вручную:
+
+```bash
+mkdir -p algorithms
+g++ main.cpp library_loader.cpp -o app -ldl
+g++ -shared -fPIC -o algorithms/speck.so speck_lib.cpp
+g++ -shared -fPIC -o algorithms/hight.so hight_lib.cpp
+g++ -shared -fPIC -o algorithms/aes.so aes_lib.cpp
+g++ -shared -fPIC -o algorithms/des.so des_lib.cpp
+g++ -shared -fPIC -o algorithms/rc4.so rc4_lib.cpp
+g++ -shared -fPIC -o algorithms/hill.so hill_lib.cpp
+g++ -shared -fPIC -o algorithms/rc5.so rc5_lib.cpp
+g++ -shared -fPIC -o algorithms/xtea.so xtea_lib.cpp
+```
+
+## Как добавить свой шифр
+
+1. Создайте файл `my_cipher_lib.cpp` в корне проекта.
+2. Подключите `algorithm_interface.h` и реализуйте все функции с `extern "C"`.
+3. Соберите плагин: `g++ -shared -fPIC -o algorithms/my_cipher.so my_cipher_lib.cpp`
+4. Перезапустите `app` — шифр подхватится автоматически.
+
+## Интерфейс плагина
+
+Каждый `.so` должен экспортировать:
+
+- `encrypt_text` / `decrypt_text` — работа с текстом (строковый ключ)
+- `encrypt_data` / `decrypt_data` — работа с файлами
+- `generate_key` — генерация ключа (строка)
+- `get_key_hint` — подсказка о длине ключа
+- `is_valid_key` — проверка ключа (1 = ок, 0 = нет)
+- `get_algorithm_name` — имя в меню
+
+## Требования к ключам
+
+| Шифр | Ключ |
+|------|------|
+| Speck 128/128 | 16 символов |
+| HIGHT | 1–16 символов (дополняется нулями) |
+| AES-128 CBC | 16 символов |
+| DES | 8 символов |
+| RC4 | 1–256 символов |
+| Hill (2×2) | 4 символа, определитель нечётный |
+| RC5-32/12/16 | 1–16 символов (дополняется нулями) |
+| XTEA | 16 символов |
+
 ## Примечания
+
+- Программа ищет `.so` в папке `./algorithms/` при запуске.
+- Для файлов: шифрование сохраняет результат в `файл.encrypted`, дешифрование убирает суффикс `.encrypted`.
+- Блочные шифры в текстовом режиме выводят hex-строку.
