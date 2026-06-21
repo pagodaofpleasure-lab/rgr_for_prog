@@ -81,4 +81,32 @@ inline std::string randomKeyString(int len) {
     return s;
 }
 
+inline std::string randomHill2x2Key() {
+    static bool seeded = false;
+    if (!seeded) {
+        srand((unsigned)time(nullptr));
+        seeded = true;
+    }
+    
+    std::string key;
+    key.resize(4);
+    
+    while (true) {
+        for (int i = 0; i < 4; ++i) {
+            key[i] = static_cast<char>(33 + (rand() % 93));
+        }
+        int a = static_cast<unsigned char>(key[0]);
+        int b = static_cast<unsigned char>(key[1]);
+        int c = static_cast<unsigned char>(key[2]);
+        int d = static_cast<unsigned char>(key[3]);
+        
+        int det = (a * d - b * c) % 256;
+        if (det < 0) det += 256;
+        
+        if (det % 2 != 0) {
+            return key;
+        }
+    }
+}
+
 #endif
