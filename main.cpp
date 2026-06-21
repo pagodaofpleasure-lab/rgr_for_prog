@@ -1,6 +1,3 @@
-// main.cpp
-// Компиляция: g++ main.cpp library_loader.cpp -o app -ldl
-
 #include <iostream>
 #include <string>
 #include <vector>
@@ -94,7 +91,7 @@ void clearInputStream() {
 }
 
 void waitForEnter() {
-    cout << endl << "Нажмите Enter для продолжения...";
+    cout << endl << "Нажмите Enter для продолжения";
     cin.ignore(numeric_limits<streamsize>::max(), '\n');
     cout << endl;
 }
@@ -110,7 +107,7 @@ string readKeyFromUser() {
     }
 
     while (true) {
-        cout << "Введите ключ или Enter для генерации: ";
+        cout << "Введите ключ или оставьте пустым для генерации: ";
         string keyInput;
         getline(cin, keyInput);
 
@@ -129,9 +126,9 @@ string readKeyFromUser() {
 }
 
 void processTextOperation() {
-    cout << endl << "=== РАБОТА С ТЕКСТОМ ===" << endl;
-    cout << "Выбранный алгоритм: " << getCurrentAlgorithmName() << endl;
-    cout << "Выберите операцию:" << endl;
+    cout << endl << "РАБОТА С ТЕКСТОМ" << endl;
+    cout << "Текуший алгоритм: " << getCurrentAlgorithmName() << endl;
+    cout << "Выберите действие:" << endl;
     cout << "1. Зашифровать текст" << endl;
     cout << "2. Расшифровать текст" << endl;
 
@@ -149,7 +146,7 @@ void processTextOperation() {
         try {
             int tmp = stoi(choiceStr);
             if (tmp != 1 && tmp != 2) {
-                cout << "Ошибка: неверный выбор. Введите 1 или 2." << endl;
+                cout << "Ошибка: Введите 1 или 2." << endl;
                 continue;
             }
             choice = tmp;
@@ -163,7 +160,7 @@ void processTextOperation() {
         cout << "Введите текст: ";
         getline(cin, text);
         if (text.empty()) {
-            cout << "Ошибка: текст не может быть пустым. Попробуйте снова." << endl;
+            cout << "Ошибка: текст не может быть пустым, попробуйте снова." << endl;
         }
     } while (text.empty());
 
@@ -173,10 +170,10 @@ void processTextOperation() {
         string result;
         if (choice == 1) {
             result = encryptText(text, key);
-            cout << endl << "=== ЗАШИФРОВАННЫЙ ТЕКСТ ===" << endl;
+            cout << endl << "ЗАШИФРОВАННЫЙ ТЕКСТ" << endl;
         } else {
             result = decryptText(text, key);
-            cout << endl << "=== РАСШИФРОВАННЫЙ ТЕКСТ ===" << endl;
+            cout << endl << "РАСШИФРОВАННЫЙ ТЕКСТ" << endl;
         }
 
         if (result.length() <= 100) {
@@ -194,9 +191,9 @@ void processTextOperation() {
 }
 
 void processFileOperation() {
-    cout << endl << "=== РАБОТА С ФАЙЛОМ ===" << endl;
-    cout << "Выбранный алгоритм: " << getCurrentAlgorithmName() << endl;
-    cout << "Выберите операцию:" << endl;
+    cout << endl << "РАБОТА С ФАЙЛОМ" << endl;
+    cout << "Текущий алгоритм: " << getCurrentAlgorithmName() << endl;
+    cout << "Выберите действие:" << endl;
     cout << "1. Зашифровать файл" << endl;
     cout << "2. Расшифровать файл" << endl;
 
@@ -214,7 +211,7 @@ void processFileOperation() {
         try {
             int tmp = stoi(choiceStr);
             if (tmp != 1 && tmp != 2) {
-                cout << "Ошибка: неверный выбор. Введите 1 или 2." << endl;
+                cout << "Ошибка: Введите 1 или 2." << endl;
                 continue;
             }
             choice = tmp;
@@ -313,37 +310,9 @@ void processFileOperation() {
     waitForEnter();
 }
 
-void processKeyGeneration() {
-    try {
-        cout << endl << "=== ГЕНЕРАТОР КЛЮЧЕЙ ===" << endl;
-        cout << "Выбранный алгоритм: " << getCurrentAlgorithmName() << endl;
-        cout << "Сгенерированный ключ: " << generateKey() << endl;
-        waitForEnter();
-    } catch (const exception& e) {
-        showError(e.what());
-        waitForEnter();
-    }
-}
-
-void listAlgorithms() {
-    cout << endl << "=== ДОСТУПНЫЕ АЛГОРИТМЫ ===" << endl;
-
-    if (!g_algorithms || g_algorithms->empty()) {
-        cout << "Нет загруженных алгоритмов." << endl;
-        cout << "Поместите .so файлы в папку 'algorithms/' и перезапустите программу." << endl;
-    } else {
-        for (size_t i = 0; i < g_algorithms->size(); ++i) {
-            cout << (i + 1) << ". " << (*g_algorithms)[i].name << endl;
-        }
-    }
-
-    cout << endl << "Текущий выбранный алгоритм: " << getCurrentAlgorithmName() << endl;
-    waitForEnter();
-}
-
 void selectAlgorithm() {
     try {
-        cout << endl << "=== ВЫБОР АЛГОРИТМА ===" << endl;
+        cout << endl << "ВЫБОР АЛГОРИТМА" << endl;
 
         if (!g_algorithms || g_algorithms->empty()) {
             throw runtime_error("Нет загруженных алгоритмов.");
@@ -387,18 +356,15 @@ void selectAlgorithm() {
 
 void showMainMenu() {
     cout << endl;
-    cout << "========================================" << endl;
-    cout << "   Encryption Algorithm RGR" << endl;
-    cout << "========================================" << endl;
-    cout << "Текущий алгоритм: " << getCurrentAlgorithmName() << endl;
-    cout << "========================================" << endl;
+    cout << "Encryption program" << endl;
+    cout << endl;
+    cout << "Выбранный алгоритм: " << getCurrentAlgorithmName() << endl;
+    cout << endl;
     cout << "1. Шифрование/дешифрование ТЕКСТА" << endl;
     cout << "2. Шифрование/дешифрование ФАЙЛА" << endl;
-    cout << "3. Генерация ключа" << endl;
-    cout << "4. Список доступных алгоритмов" << endl;
-    cout << "5. Выбрать алгоритм" << endl;
-    cout << "6. Выход" << endl;
-    cout << "========================================" << endl;
+    cout << "3. Выбрать алгоритм" << endl;
+    cout << "4. Выход" << endl;
+    cout << endl;
     cout << "Ваш выбор: ";
 }
 
@@ -440,7 +406,7 @@ int main() {
         getline(cin, choiceStr);
 
         if (choiceStr.empty()) {
-            showError("Введите число от 1 до 6.");
+            showError("Введите число от 1 до 4.");
             waitForEnter();
             continue;
         }
@@ -449,13 +415,13 @@ int main() {
         try {
             choice = stoi(choiceStr);
         } catch (const exception&) {
-            showError("Введите число от 1 до 6.");
+            showError("Введите число от 1 до 4.");
             waitForEnter();
             continue;
         }
 
         if (choice < 1 || choice > 6) {
-            showError("Неверный выбор. Введите число от 1 до 6.");
+            showError("Неверный выбор. Введите число от 1 до 4.");
             waitForEnter();
             continue;
         }
@@ -465,13 +431,9 @@ int main() {
         } else if (choice == 2) {
             processFileOperation();
         } else if (choice == 3) {
-            processKeyGeneration();
-        } else if (choice == 4) {
-            listAlgorithms();
-        } else if (choice == 5) {
             selectAlgorithm();
-        } else if (choice == 6) {
-            cout << endl << "Завершение работы программы. До свидания!" << endl;
+        } else if (choice == 4) {
+            cout << endl << "Завершение работы программы." << endl;
             running = false;
         }
     }
