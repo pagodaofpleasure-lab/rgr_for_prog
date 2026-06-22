@@ -9,8 +9,7 @@
 #include <sstream>
 #include <iomanip>
 #include <cstring>
-#include <cstdlib>
-#include <ctime>
+#include <random> 
 
 inline std::string bytesToHex(const std::vector<unsigned char>& data) {
     std::ostringstream oss;
@@ -61,39 +60,47 @@ inline void copyKey(const char* key, unsigned char* out, size_t len) {
     }
 }
 
+inline std::mt19937& get_random_engine() {
+    static std::random_device rd;
+    static std::mt19937 engine(rd());
+    return engine;
+}
+
 inline void randomBytes(unsigned char* buf, int n) {
-    static bool seeded = false;
-    if (!seeded) {
-        srand((unsigned)time(nullptr));
-        seeded = true;
-    }
+    auto& engine = get_random_engine();
+    std::uniform_int_distribution<int> dist(0, 255);
     for (int i = 0; i < n; ++i) {
-        buf[i] = (unsigned char)(rand() % 256);
+        buf[i] = static_cast<unsigned char>(dist(engine));
     }
 }
 
 inline std::string randomKeyString(int len) {
+    auto& engine = get_random_engine();
+    const char charset[] = "0123456789"
+                           "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                           "abcdefghijklmnopqrstuvwxyz";
+    const size_t max_index = sizeof(charset) - 1;
+    
+    std::uniform_int_distribution<size_t> dist(0, max_index - 1);
+    
     std::string s;
     s.resize(len);
     for (int i = 0; i < len; ++i) {
-        s[i] = (char)('a' + (rand() % 26));
+        s[i] = charset[dist(engine)];
     }
     return s;
 }
 
 inline std::string randomHill2x2Key() {
-    static bool seeded = false;
-    if (!seeded) {
-        srand((unsigned)time(nullptr));
-        seeded = true;
-    }
+    auto& engine = get_random_engine();
+    std::uniform_int_distribution<int> dist(33, 125);
     
     std::string key;
     key.resize(4);
     
     while (true) {
         for (int i = 0; i < 4; ++i) {
-            key[i] = static_cast<char>(33 + (rand() % 93));
+            key[i] = static_cast<char>(dist(engine));
         }
         int a = static_cast<unsigned char>(key[0]);
         int b = static_cast<unsigned char>(key[1]);
@@ -102,7 +109,6 @@ inline std::string randomHill2x2Key() {
         
         int det = (a * d - b * c) % 256;
         if (det < 0) det += 256;
-        
         if (det % 2 != 0) {
             return key;
         }
