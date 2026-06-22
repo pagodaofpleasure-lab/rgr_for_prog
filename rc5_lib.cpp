@@ -6,7 +6,8 @@
 #include <string>
 #include <vector>
 #include <cstring>
-#include <cstdint>
+#include <cstdint> 
+#include <cstdio>
 using namespace std;
 
 static string g_resultString;
@@ -15,99 +16,113 @@ static vector<unsigned char> g_resultData;
 static const int ROUNDS = 12;
 static const int TABLE_SIZE = 2 * (ROUNDS + 1);
 
-static unsigned int rotl(unsigned int v, unsigned int s) {
+static uint32_t rotl(uint32_t v, uint32_t s) {
     s &= 31;
-    return (v << s) | (v >> (32 - s));
+    return ((v << s) | (v >> (32 - s))) & 0xFFFFFFFF;
 }
 
-static unsigned int rotr(unsigned int v, unsigned int s) {
+static uint32_t rotr(uint32_t v, uint32_t s) {
     s &= 31;
-    return (v >> s) | (v << (32 - s));
+    return ((v >> s) | (v << (32 - s))) & 0xFFFFFFFF;
 }
 
-static void expandKey(const unsigned char key[16], unsigned int s[TABLE_SIZE]) {
-    unsigned int l[4] = {0};
+static void expandKey(const unsigned char key[16], uint32_t s[TABLE_SIZE]) {
+    uint32_t l[4] = {0};
     for (int i = 0; i < 16; ++i) {
-        l[i / 4] |= ((unsigned int)key[i]) << (8 * (i % 4));
+        l[i / 4] |= ((uint32_t)key[i]) << (8 * (i % 4));
     }
 
     s[0] = 0xB7E15163;
     for (int i = 1; i < TABLE_SIZE; ++i) {
-        s[i] = s[i - 1] + 0x9E3779B9;
+        s[i] = (s[i - 1] + 0x9E3779B9) & 0xFFFFFFFF;
     }
 
-    unsigned int a = 0, b = 0;
+    uint32_t a = 0, b = 0;
     int steps = 3 * (TABLE_SIZE > 4 ? TABLE_SIZE : 4);
     int i = 0, j = 0;
     for (int k = 0; k < steps; ++k) {
-        a = s[i] = rotl(s[i] + a + b, 3);
-        b = l[j] = rotl(l[j] + a + b, (a + b) & 31);
+        a = s[i] = rotl((s[i] + a + b) & 0xFFFFFFFF, 3);
+        b = l[j] = rotl((l[j] + a + b) & 0xFFFFFFFF, (a + b) & 31);
         i = (i + 1) % TABLE_SIZE;
         j = (j + 1) % 4;
     }
+
 }
 
-static void rc5EncryptBlock(unsigned int& a, unsigned int& b, const unsigned int s[TABLE_SIZE]) {
-    a += s[0];
-    b += s[1];
+static void rc5EncryptBlock(uint32_t& a, uint32_t& b, const uint32_t s[TABLE_SIZE]) {
+    a = (a + s[0]) & 0xFFFFFFFF;
+    b = (b + s[1]) & 0xFFFFFFFF;
+    
     for (int i = 1; i <= ROUNDS; ++i) {
-        a = rotl(a ^ b, b & 31) + s[2 * i];
-        b = rotl(b ^ a, a & 31) + s[2 * i + 1];
+        a = (rotl(a ^ b, b & 31) + s[2 * i]) & 0xFFFFFFFF;
+        b = (rotl(b ^ a, a & 31) + s[2 * i + 1]) & 0xFFFFFFFF;
     }
 }
 
-static void rc5DecryptBlock(unsigned int& a, unsigned int& b, const unsigned int s[TABLE_SIZE]) {
+static void rc5DecryptBlock(uint32_t& a, uint32_t& b, const uint32_t s[TABLE_SIZE]) {
     for (int i = ROUNDS; i >= 1; --i) {
-        b = rotr(b - s[2 * i + 1], a & 31) ^ a;
-        a = rotr(a - s[2 * i], b & 31) ^ b;
+        b = rotr((b - s[2 * i + 1]) & 0xFFFFFFFF, a & 31) ^ a;
+        a = rotr((a - s[2 * i]) & 0xFFFFFFFF, b & 31) ^ b;
     }
-    b -= s[1];
-    a -= s[0];
+    b = (b - s[1]) & 0xFFFFFFFF;
+    a = (a - s[0]) & 0xFFFFFFFF;
 }
+
 
 static vector<unsigned char> encryptBlocks(const vector<unsigned char>& data, const char* key) {
     unsigned char k[16];
     copyKey(key, k, 16);
-    unsigned int s[TABLE_SIZE];
+    uint32_t s[TABLE_SIZE];
     expandKey(k, s);
 
     vector<unsigned char> padded = pkcs7Pad(data, 8);
+
     vector<unsigned char> out;
 
+    int blockNum = 1;
     for (size_t i = 0; i < padded.size(); i += 8) {
-        unsigned int a, b;
+        uint32_t a, b;
         memcpy(&a, &padded[i], 4);
         memcpy(&b, &padded[i + 4], 4);
+
         rc5EncryptBlock(a, b, s);
+        
         unsigned char block[8];
         memcpy(block, &a, 4);
         memcpy(block + 4, &b, 4);
+        
         out.insert(out.end(), block, block + 8);
     }
     return out;
 }
-
 static vector<unsigned char> decryptBlocks(const vector<unsigned char>& data, const char* key) {
     if (data.size() % 8 != 0) {
         return {};
     }
     unsigned char k[16];
     copyKey(key, k, 16);
-    unsigned int s[TABLE_SIZE];
+    uint32_t s[TABLE_SIZE];
     expandKey(k, s);
 
     vector<unsigned char> out;
+    int blockNum = 1;
     for (size_t i = 0; i < data.size(); i += 8) {
-        unsigned int a, b;
+        uint32_t a, b;
         memcpy(&a, &data[i], 4);
         memcpy(&b, &data[i + 4], 4);
+        
         rc5DecryptBlock(a, b, s);
+        
         unsigned char block[8];
         memcpy(block, &a, 4);
         memcpy(block + 4, &b, 4);
+        
         out.insert(out.end(), block, block + 8);
     }
-    return pkcs7Unpad(out);
+    
+    vector<unsigned char> unpadded = pkcs7Unpad(out);
+    
+    return unpadded;
 }
 
 static vector<unsigned char> encryptFileData(const vector<unsigned char>& data, const char* key) {
@@ -115,25 +130,31 @@ static vector<unsigned char> encryptFileData(const vector<unsigned char>& data, 
     randomBytes(iv, 8);
     unsigned char k[16];
     copyKey(key, k, 16);
-    unsigned int s[TABLE_SIZE];
+    uint32_t s[TABLE_SIZE];
     expandKey(k, s);
 
     vector<unsigned char> padded = pkcs7Pad(data, 8);
+    
     vector<unsigned char> prev(iv, iv + 8);
     vector<unsigned char> out(iv, iv + 8);
 
+    int blockNum = 1;
     for (size_t i = 0; i < padded.size(); i += 8) {
         unsigned char xored[8];
         for (int j = 0; j < 8; ++j) {
             xored[j] = padded[i + j] ^ prev[j];
         }
-        unsigned int a, b;
+
+        uint32_t a, b;
         memcpy(&a, xored, 4);
         memcpy(&b, xored + 4, 4);
+        
         rc5EncryptBlock(a, b, s);
+        
         unsigned char block[8];
         memcpy(block, &a, 4);
         memcpy(block + 4, &b, 4);
+
         out.insert(out.end(), block, block + 8);
         memcpy(prev.data(), block, 8);
     }
@@ -146,14 +167,14 @@ static vector<unsigned char> decryptFileData(const vector<unsigned char>& data, 
     }
     unsigned char k[16];
     copyKey(key, k, 16);
-    unsigned int s[TABLE_SIZE];
+    uint32_t s[TABLE_SIZE];
     expandKey(k, s);
 
     vector<unsigned char> prev(data.begin(), data.begin() + 8);
     vector<unsigned char> out;
 
     for (size_t i = 8; i < data.size(); i += 8) {
-        unsigned int a, b;
+        uint32_t a, b;
         memcpy(&a, &data[i], 4);
         memcpy(&b, &data[i + 4], 4);
         rc5DecryptBlock(a, b, s);
@@ -176,11 +197,20 @@ const char* encrypt_text(const char* text, const char* key) {
     return g_resultString.c_str();
 }
 
+
 const char* decrypt_text(const char* cipher, const char* key) {
+    if (!cipher || strlen(cipher) == 0) {
+        return "";
+    }
+    
     vector<unsigned char> data = hexToBytes(cipher);
+    
     vector<unsigned char> plain = decryptBlocks(data, key);
+    
     g_resultString = string(plain.begin(), plain.end());
     return g_resultString.c_str();
+}
+
 }
 
 unsigned char* encrypt_data(const unsigned char* data, int dataSize, const char* key, int* outSize) {
@@ -203,7 +233,7 @@ const char* generate_key() {
 }
 
 const char* get_key_hint() {
-    return "Ключ: от 1 до 16 символов (дополняется нулями до 16)";
+    return "Ключ: от 1 до 16 символов (дополняется нулями)";
 }
 
 int is_valid_key(const char* key) {
@@ -213,9 +243,7 @@ int is_valid_key(const char* key) {
 }
 
 const char* get_algorithm_name() {
-    return "RC5-32/12/16";
+    return "RC5-32/1/16";
 }
 
 void free_memory(void* ptr) {}
-
-}
