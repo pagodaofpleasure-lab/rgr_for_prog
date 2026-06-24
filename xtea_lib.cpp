@@ -13,7 +13,7 @@ static string g_resultString;
 static vector<unsigned char> g_resultData;
 
 static const unsigned int DELTA = 0x9E3779B9;
-static const int ROUNDS = 32;
+static const int FEISTEL_СYCLE = 32; // 64 - rounds
 
 static void xteaEncryptBlock(unsigned char out[8], const unsigned char in[8], const unsigned int key[4]) {
     unsigned int v0, v1;
@@ -21,7 +21,7 @@ static void xteaEncryptBlock(unsigned char out[8], const unsigned char in[8], co
     memcpy(&v1, in + 4, 4);
     unsigned int sum = 0;
 
-    for (int i = 0; i < ROUNDS; ++i) {
+    for (int i = 0; i < FEISTEL_СYCLE; ++i) {
         v0 += (((v1 << 4) ^ (v1 >> 5)) + v1) ^ (sum + key[sum & 3]);
         sum += DELTA;
         v1 += (((v0 << 4) ^ (v0 >> 5)) + v0) ^ (sum + key[(sum >> 11) & 3]);
@@ -35,9 +35,9 @@ static void xteaDecryptBlock(unsigned char out[8], const unsigned char in[8], co
     unsigned int v0, v1;
     memcpy(&v0, in, 4);
     memcpy(&v1, in + 4, 4);
-    unsigned int sum = DELTA * ROUNDS;
+    unsigned int sum = DELTA * FEISTEL_СYCLE;
 
-    for (int i = 0; i < ROUNDS; ++i) {
+    for (int i = 0; i < FEISTEL_СYCLE; ++i) {
         v1 -= (((v0 << 4) ^ (v0 >> 5)) + v0) ^ (sum + key[(sum >> 11) & 3]);
         sum -= DELTA;
         v0 -= (((v1 << 4) ^ (v1 >> 5)) + v1) ^ (sum + key[sum & 3]);
@@ -66,7 +66,6 @@ static vector<unsigned char> encryptBlocks(const vector<unsigned char>& data, co
     }
     return out;
 }
-
 static vector<unsigned char> decryptBlocks(const vector<unsigned char>& data, const char* key) {
     if (data.size() % 8 != 0) {
         return {};
