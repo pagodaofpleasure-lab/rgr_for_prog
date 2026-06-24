@@ -13,6 +13,18 @@ static LibraryLoader g_loader;
 static const vector<AlgorithmFunctions>* g_algorithms = nullptr;
 static int g_currentAlgorithm = -1;
 
+enum class MenuAction {
+    TEXT = 1, 
+    FILE = 2,
+    ALGORITHM = 3,
+    EXIT = 4
+ }; 
+
+enum class Operation { 
+    ENCRYPT = 1,
+    DECRYPT = 2
+};
+
 string getCurrentAlgorithmName() {
     if (!g_algorithms || g_currentAlgorithm < 0 || g_currentAlgorithm >= (int)g_algorithms->size()) {
         return "Не выбран";
@@ -132,8 +144,8 @@ void processTextOperation() {
     cout << "1. Зашифровать текст" << endl;
     cout << "2. Расшифровать текст" << endl;
 
-    int choice = 0;
-    while (choice == 0) {
+    Operation choice = Operation::ENCRYPT;
+    while (true) {
         cout << "Ваш выбор: ";
         string choiceStr;
         getline(cin, choiceStr);
@@ -145,11 +157,9 @@ void processTextOperation() {
 
         try {
             int tmp = stoi(choiceStr);
-            if (tmp != 1 && tmp != 2) {
-                cout << "Ошибка: Введите 1 или 2." << endl;
-                continue;
-            }
-            choice = tmp;
+            if (tmp == (int)Operation::ENCRYPT) { choice = Operation::ENCRYPT; break; }
+            if (tmp == (int)Operation::DECRYPT) { choice = Operation::DECRYPT; break; }
+            cout << "Ошибка: Введите 1 или 2." << endl;
         } catch (const exception&) {
             cout << "Ошибка: введите число 1 или 2." << endl;
         }
@@ -168,10 +178,11 @@ void processTextOperation() {
 
     try {
         string result;
-        if (choice == 1) {
+        if (choice == Operation::ENCRYPT) {
             result = encryptText(text, key);
             cout << endl << "ЗАШИФРОВАННЫЙ ТЕКСТ" << endl;
-        } else {
+        } 
+        else {
             result = decryptText(text, key);
             cout << endl << "РАСШИФРОВАННЫЙ ТЕКСТ" << endl;
         }
@@ -197,8 +208,8 @@ void processFileOperation() {
     cout << "1. Зашифровать файл" << endl;
     cout << "2. Расшифровать файл" << endl;
 
-    int choice = 0;
-    while (choice == 0) {
+    Operation choice = Operation::ENCRYPT;
+    while (true) {
         cout << "Ваш выбор: ";
         string choiceStr;
         getline(cin, choiceStr);
@@ -210,11 +221,9 @@ void processFileOperation() {
 
         try {
             int tmp = stoi(choiceStr);
-            if (tmp != 1 && tmp != 2) {
-                cout << "Ошибка: Введите 1 или 2." << endl;
-                continue;
-            }
-            choice = tmp;
+            if (tmp == (int)Operation::ENCRYPT) { choice = Operation::ENCRYPT; break; }
+            if (tmp == (int)Operation::DECRYPT) { choice = Operation::DECRYPT; break; }
+            cout << "Ошибка: Введите 1 или 2." << endl;
         } catch (const exception&) {
             cout << "Ошибка: введите число 1 или 2." << endl;
         }
@@ -277,18 +286,21 @@ void processFileOperation() {
 
     try {
         vector<unsigned char> result;
-        if (choice == 1) {
+        if (choice == Operation::ENCRYPT) {
             result = encryptData(data, key);
-        } else {
+        } 
+        else {
             result = decryptData(data, key);
         }
 
         string outputPath;
-        if (choice == 1) {
+        if (choice == Operation::ENCRYPT) {
             outputPath = filePath + ".encrypted";
-        } else if (filePath.length() > 10 && filePath.substr(filePath.length() - 10) == ".encrypted") {
+        } 
+        else if (filePath.length() > 10 && filePath.substr(filePath.length() - 10) == ".encrypted") {
             outputPath = filePath.substr(0, filePath.length() - 10);
-        } else {
+        } 
+        else {
             outputPath = filePath + ".decrypted";
         }
 
@@ -356,15 +368,12 @@ void selectAlgorithm() {
 
 void showMainMenu() {
     cout << endl;
-    cout << "Encryption program" << endl;
-    cout << endl;
-    cout << "Выбранный алгоритм: " << getCurrentAlgorithmName() << endl;
-    cout << endl;
+    cout << "Encryption program" << endl << endl;
+    cout << "Выбранный алгоритм: " << getCurrentAlgorithmName() << endl << endl;
     cout << "1. Шифрование/дешифрование ТЕКСТА" << endl;
     cout << "2. Шифрование/дешифрование ФАЙЛА" << endl;
     cout << "3. Выбрать алгоритм" << endl;
-    cout << "4. Выход" << endl;
-    cout << endl;
+    cout << "4. Выход" << endl << endl;
     cout << "Ваш выбор: ";
 }
 
@@ -426,15 +435,20 @@ int main() {
             continue;
         }
 
-        if (choice == 1) {
-            processTextOperation();
-        } else if (choice == 2) {
-            processFileOperation();
-        } else if (choice == 3) {
-            selectAlgorithm();
-        } else if (choice == 4) {
-            cout << endl << "Завершение работы программы." << endl;
-            running = false;
+        switch ((MenuAction)choice) {
+            case MenuAction::TEXT:
+                processTextOperation();
+                break;
+            case MenuAction::FILE:
+                processFileOperation();
+                break;
+            case MenuAction::ALGORITHM:
+                selectAlgorithm();
+                break;
+            case MenuAction::EXIT:
+                cout << endl << "Завершение работы программы." << endl;
+                running = false;
+                break;
         }
     }
 
